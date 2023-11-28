@@ -1,0 +1,57 @@
+import cv2
+import numpy as np
+
+# Start video capture
+cap = cv2.VideoCapture(0)
+
+if not cap.isOpened():
+    print("Error: Webcam not accessible")
+    exit()
+
+while True:
+    # Capture frame-by-frame
+    ret, frame = cap.read()
+
+    # Check if frame is read correctly
+    if not ret:
+        print("Error: Can't receive frame (stream end?). Exiting ...")
+        break
+
+    # Convert to HSV
+    hsv = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
+
+    # Define range of red color in HSV
+    lower_red1 = np.array([0, 120, 70])
+    upper_red1 = np.array([10, 255, 255])
+    mask1 = cv2.inRange(hsv, lower_red1, upper_red1)
+
+    # Second range to cover the hue wrap-around
+    lower_red2 = np.array([170, 120, 70])
+    upper_red2 = np.array([180, 255, 255])
+    mask2 = cv2.inRange(hsv, lower_red2, upper_red2)
+
+    # Combine the masks
+    red_mask = mask1 + mask2
+
+    # Find the brightest spot in the red mask
+    (minVal, maxVal, minLoc, maxLoc) = cv2.minMaxLoc(red_mask)
+
+    # Mark the reddest spot
+    cv2.circle(frame, maxLoc, 10, (255, 0, 0), 2)
+    height, width = red_mask.shape[:2]
+    
+    for x in range(0, height-1):
+        for y in range(0, width-1):
+            
+
+
+    # Display the resulting frame
+    cv2.imshow('Frame with Reddest Spot', frame)
+
+    # Break the loop on 'q' key press
+    if cv2.waitKey(1) & 0xFF == ord('q'):
+        break
+
+# When everything done, release the capture
+cap.release()
+cv2.destroyAllWindows()
