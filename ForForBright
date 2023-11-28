@@ -1,0 +1,100 @@
+import cv2
+import numpy as np
+
+# Start video capture
+cap = cv2.VideoCapture(0)
+
+if not cap.isOpened():
+    print("Error: Webcam not accessible")
+    exit()
+
+while True:
+    # Capture frame-by-frame
+    ret, frame = cap.read()
+
+    # Check if frame is read correctly
+    if not ret:
+        print("Error: Can't receive frame (stream end?). Exiting ...")
+        break
+
+    # Initialize variables to track the reddest spot
+    max_brightest = 0
+    brightest_spot = (0, 0)
+
+    # Iterate over each pixel
+    for y in range(frame.shape[0]):
+        for x in range(frame.shape[1]):
+            # Get the pixel's value
+            b, g, r = frame[y, x]
+
+            # Simple redness measure (can be adjusted)
+            brightest = int(r) +int(b)+ int(g)
+
+            # Update the reddest spot
+            if brightest > max_brightest:
+                max_brightest = brightest
+                brightest_spot = (x, y)
+
+    # Mark the reddest spot
+    cv2.circle(frame, brightest_spot, 10, (255, 0, 0), 2)
+
+    # Display the resulting frame
+    cv2.imshow('Frame with brigthest Spot', frame)
+
+    # Break the loop on 'q' key press
+    if cv2.waitKey(1) & 0xFF == ord('q'):
+        break
+
+# When everything done, release the capture
+cap.release()
+cv2.destroyAllWindows()
+import cv2
+import numpy as np
+
+# Start video capture
+cap = cv2.VideoCapture(0)
+
+if not cap.isOpened():
+    print("Error: Webcam not accessible")
+    exit()
+
+while True:
+    # Capture frame-by-frame
+    ret, frame = cap.read()
+
+    # Check if frame is read correctly
+    if not ret:
+        print("Error: Can't receive frame (stream end?). Exiting ...")
+        break
+
+    # Initialize variables to track the brightest spot
+    max_brightest = 0
+    brightest_spot = (0, 0)
+
+    # Iterate over each pixel
+    for y in range(frame.shape[0]):
+        for x in range(frame.shape[1]):
+            # Get the pixel's value
+            b, g, r = frame[y, x]
+
+            # Calculate brightness
+            brightness = int(r) + int(g) + int(b)
+
+            # Update the brightest spot
+            if brightness > max_brightest:
+                max_brightest = brightness
+                brightest_spot = (x, y)
+
+    # Mark the brightest spot
+    cv2.circle(frame, brightest_spot, 10, (255, 0, 0), 2)
+
+    # Display the resulting frame
+    cv2.imshow('Frame with Brightest Spot', frame)
+
+    # Break the loop on 'q' key press
+    if cv2.waitKey(1) & 0xFF == ord('q'):
+        break
+
+# When everything done, release the capture
+cap.release()
+cv2.destroyAllWindows()
