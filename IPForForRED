@@ -1,0 +1,70 @@
+import cv2
+import time
+import numpy as np
+
+# IP camera URL
+url = 'http://192.168.8.103:8080/video'
+
+# Start video capture from IP camera
+cap = cv2.VideoCapture(url)
+
+if not cap.isOpened():
+    print("Error: Cannot access IP camera")
+    exit()
+
+# Initialize variables for FPS calculation
+fps = 0
+frame_count = 0
+start_time = time.time()
+
+while True:
+    # Capture frame-by-frame
+    ret, frame = cap.read()
+    if not ret:
+        print("Error: Can't receive frame (stream end?). Exiting ...")
+        break
+
+    # Initialize variables to track the reddest spot
+    max_redness = 0
+    reddest_spot = (0, 0)
+
+    # Iterate over each pixel
+    for y in range(frame.shape[0]):
+        for x in range(frame.shape[1]):
+            # Get the pixel's value
+            b, g, r = frame[y, x]
+
+            # Simple redness measure (can be adjusted)
+            redness = int(r) - max(int(b), int(g))
+
+            # Update the reddest spot
+            if redness > max_redness:
+                max_redness = redness
+                reddest_spot = (x, y)
+
+    # Mark the reddest spot
+    cv2.circle(frame, reddest_spot, 10, (255, 0, 0), 2)
+
+    # Increment frame count for FPS calculation
+    frame_count += 1
+
+    # Calculate FPS every second
+    current_time = time.time()
+    if current_time - start_time >= 1:
+        fps = frame_count / (current_time - start_time)
+        frame_count = 0
+        start_time = current_time
+
+    # Display FPS on frame
+    cv2.putText(frame, f'FPS: {fps:.2f}', (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)
+
+    # Display the resulting frame
+    cv2.imshow('Video Stream with Reddest Spot', frame)
+
+    # Break the loop on 'q' key press
+    if cv2.waitKey(1) & 0xFF == ord('q'):
+        break
+
+# When everything done, release the capture
+cap.release()
+cv2.destroyAllWindows()
