@@ -17,7 +17,7 @@ while True:
         print("Error: Can't receive frame (stream end?). Exiting ...")
         break
 
-    # Initialize variables to track the reddest spot
+    # Initialize variables to track the brightest spot
     max_brightest = 0
     brightest_spot = (0, 0)
 
@@ -30,12 +30,12 @@ while True:
             # Simple redness measure (can be adjusted)
             brightest = int(r) +int(b)+ int(g)
 
-            # Update the reddest spot
+            # Update the brightest spot
             if brightest > max_brightest:
                 max_brightest = brightest
                 brightest_spot = (x, y)
 
-    # Mark the reddest spot
+    # Mark the brightest spot
     cv2.circle(frame, brightest_spot, 10, (255, 0, 0), 2)
 
     # Display the resulting frame
