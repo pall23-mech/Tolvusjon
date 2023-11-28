@@ -1,0 +1,81 @@
+import cv2
+import numpy as np
+import time
+import random
+
+def fit_line(p1, p2):
+    """Fit a line given two points."""
+    A = np.array([[p1[0], 1], [p2[0], 1]])
+    b = np.array([p1[1], p2[1]])
+    return np.linalg.lstsq(A, b, rcond=None)[0]
+
+def count_inliers(coeffs, points, threshold):
+    """Count how many points are close to the line."""
+    inliers = 0
+    for point in points:
+        if abs(coeffs[0] * point[0] + coeffs[1] - point[1]) < threshold:
+            inliers += 1
+    return inliers
+
+# Start video capture
+cap = cv2.VideoCapture(0)
+
+if not cap.isOpened():
+    print("Error: Webcam not accessible")
+    exit()
+
+while True:
+    ret, frame = cap.read()
+    if not ret:
+        break
+
+    start_time = time.time()  # Start time for processing
+
+    gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+    edges = cv2.Canny(gray, 50, 150)
+
+    # Find coordinates of all edge pixels
+    y_coords, x_coords = np.where(edges > 0)
+    edge_points = np.column_stack((x_coords, y_coords))
+
+    best_inliers = 0
+    best_line = None
+
+    # RANSAC iterations
+    for _ in range(100):  # Adjust the number of iterations as needed
+        if len(edge_points) < 2:
+            break
+
+        # Randomly sample 2 points
+        sample_points = edge_points[random.sample(range(len(edge_points)), 2)]
+
+        # Fit line to these points
+        line_coeffs = fit_line(sample_points[0], sample_points[1])
+
+        # Count inliers
+        inliers = count_inliers(line_coeffs, edge_points, 2.0)  # Adjust threshold as needed
+
+        # Update best model if necessary
+        if inliers > best_inliers:
+            best_inliers = inliers
+            best_line = line_coeffs
+
+    # Draw the best line
+    if best_line is not None:
+        x_vals = np.array([0, frame.shape[1]])
+        y_vals = best_line[0] * x_vals + best_line[1]
+        cv2.line(frame, (x_vals[0], int(y_vals[0])), (x_vals[1], int(y_vals[1])), (0, 255, 0), 2)
+
+    end_time = time.time()  # End time for processing
+    processing_time = end_time - start_time  # Calculate processing time
+
+    # Display processing time on the frame
+    cv2.putText(frame, f'Processing Time: {processing_time:.3f} sec', (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 255, 0), 2)
+
+    cv2.imshow('Frame with Detected Line', frame)
+    cv2.imshow('EDGE Line', edges)
+    if cv2.waitKey(1) & 0xFF == ord('q'):
+        break
+
+cap.release()
+cv2.destroyAllWindows()
