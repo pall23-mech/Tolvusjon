@@ -91,14 +91,42 @@ while True:
                 x1, y1, x2, y2 = line
                 cv2.line(frame, (x1, y1), (x2, y2), (0, 255, 0), 2)
 
-        # Find and mark intersections
-        for i in range(len(selected_lines)):
-            for j in range(i+1, len(selected_lines)):
-                inter = line_intersection([selected_lines[i]], [selected_lines[j]])
-                if inter is not None:
-                    cv2.circle(frame, (int(inter[0]), int(inter[1])), 5, (0, 0, 255), -1)
 
-    cv2.imshow('Frame with Detected Lines and Intersections', frame)
+        # Extend the selected lines
+        extended_lines = [extend_line(line) for line in selected_lines]
+
+        for line in extended_lines:
+            x1, y1, x2, y2 = line
+            cv2.line(frame, (x1, y1), (x2, y2), (0, 255, 0), 2)
+
+        # Find intersections of the extended lines
+        intersections = []
+        for i in range(len(extended_lines)):
+            for j in range(i+1, len(extended_lines)):
+                inter = line_intersection([extended_lines[i]], [extended_lines[j]])
+                if inter is not None:
+                    intersections.append(inter)
+
+        # Assuming we have 4 intersections, we can now create a perspective transform
+        if len(intersections) == 4:
+            # Sort intersections to get top-left, top-right, bottom-right, bottom-left
+            intersections.sort(key=lambda x: (x[1], x[0]))
+            top_left, top_right = sorted(intersections[:2], key=lambda x: x[0])
+            bottom_left, bottom_right = sorted(intersections[2:], key=lambda x: x[0], reverse=True)
+
+            pts1 = np.float32([top_left, top_right, bottom_right, bottom_left])
+            width, height = 300, 400  # Desired dimensions of new image
+            pts2 = np.float32([[0, 0], [width, 0], [width, height], [0, height]])
+
+            M = cv2.getPerspectiveTransform(pts1, pts2)
+            warped_image = cv2.warpPerspective(frame, M, (width, height))
+
+            # Display the rectified image
+            cv2.imshow("Rectified Image", warped_image)
+        else:
+            cv2.imshow('Frame with Detected Lines and Intersections', frame)
+    else:
+        cv2.imshow('Frame', frame)
 
     if cv2.waitKey(1) & 0xFF == ord('q'):
         break
