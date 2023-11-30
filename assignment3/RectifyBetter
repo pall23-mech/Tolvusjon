@@ -1,0 +1,107 @@
+import cv2
+import numpy as np
+
+def extend_line(line, extension_length=1000):
+    """Extend a line by a given length."""
+    x1, y1, x2, y2 = line
+    dx = x2 - x1
+    dy = y2 - y1
+    norm = np.sqrt(dx**2 + dy**2)
+    dx, dy = dx / norm, dy / norm  # Normalize the direction vector
+    # Extend the line in both directions
+    x1_new, y1_new = x1 - dx * extension_length, y1 - dy * extension_length
+    x2_new, y2_new = x2 + dx * extension_length, y2 + dy * extension_length
+    return (int(x1_new), int(y1_new), int(x2_new), int(y2_new))
+
+def angle_between_lines(line1, line2):
+    """Calculate the angle between two lines."""
+    x1, y1, x2, y2 = line1[0]
+    x3, y3, x4, y4 = line2[0]
+
+    angle1 = np.arctan2(y2 - y1, x2 - x1)
+    angle2 = np.arctan2(y4 - y3, x4 - x3)
+    return np.abs(np.rad2deg(angle1 - angle2))
+
+def line_intersection(line1, line2):
+    """Find the intersection of two lines given in HoughP format."""
+    x1, y1, x2, y2 = line1[0]
+    x3, y3, x4, y4 = line2[0]
+
+    # Convert lines to the format of y = mx + c
+    m1 = (y2 - y1) / float(x2 - x1) if x2 != x1 else float('inf')
+    m2 = (y4 - y3) / float(x4 - x3) if x4 != x3 else float('inf')
+    c1 = y1 - m1 * x1
+    c2 = y3 - m2 * x3
+
+    if m1 == m2:  # Parallel lines
+        return None
+
+    # Intersection point
+    x = (c2 - c1) / (m1 - m2) if m1 != float('inf') and m2 != float('inf') else x1 if m1 == float('inf') else x3
+    y = m1 * x + c1 if m1 != float('inf') else m2 * x + c2
+
+    return (x, y)
+def line_length(line):
+    x1, y1, x2, y2 = line[0]
+    return np.sqrt((x2 - x1)**2 + (y2 - y1)**2)
+
+# Start video capture
+cap = cv2.VideoCapture(0)
+
+if not cap.isOpened():
+    print("Error: Webcam not accessible")
+    exit()
+
+while True:
+    ret, frame = cap.read()
+    if not ret:
+        break
+
+    gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+    edges = cv2.Canny(gray, 50, 150)
+    lines = cv2.HoughLinesP(edges, 1, np.pi/180, threshold=50, minLineLength=50, maxLineGap=10)
+
+    if lines is not None:
+        # Find all pairs of lines that intersect at approximately 90°
+        sorted_lines = sorted(lines, key=lambda x: np.linalg.norm((x[0][0]-x[0][2], x[0][1]-x[0][3])), reverse=True)[:20]
+
+        # Collect pairs of lines that form approximately 90-degree angles
+        line_pairs = []
+        for i in range(len(sorted_lines)):
+            for j in range(i+1, len(sorted_lines)):
+                if 80 <= angle_between_lines(sorted_lines[i], sorted_lines[j]) <= 100:
+                    line_pairs.append((sorted_lines[i], sorted_lines[j]))
+
+        # Calculate the length of each line in these pairs
+        line_lengths = [(tuple(line[0]), line_length(line)) for pair in line_pairs for line in pair]
+
+        # Sort these lines by their length
+        sorted_lines_by_length = sorted(line_lengths, key=lambda x: x[1], reverse=True)
+
+        # Select the top four longest lines
+        selected_lines = []
+        for line, length in sorted_lines_by_length:
+            if line not in selected_lines and len(selected_lines) < 4:
+                selected_lines.append(line)
+                # Extend the selected lines
+                extended_lines = [extend_line(line) for line in selected_lines]
+    
+            # Draw the selected lines
+            for line in selected_lines:
+                x1, y1, x2, y2 = line
+                cv2.line(frame, (x1, y1), (x2, y2), (0, 255, 0), 2)
+
+        # Find and mark intersections
+        for i in range(len(selected_lines)):
+            for j in range(i+1, len(selected_lines)):
+                inter = line_intersection([selected_lines[i]], [selected_lines[j]])
+                if inter is not None:
+                    cv2.circle(frame, (int(inter[0]), int(inter[1])), 5, (0, 0, 255), -1)
+
+    cv2.imshow('Frame with Detected Lines and Intersections', frame)
+
+    if cv2.waitKey(1) & 0xFF == ord('q'):
+        break
+
+cap.release()
+cv2.destroyAllWindows()
